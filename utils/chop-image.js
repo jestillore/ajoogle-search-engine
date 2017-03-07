@@ -1,6 +1,5 @@
 'use strict'
 
-var sizeOf = require('image-size');
 var fs = require('fs');
 var path = require('path');
 var lwip = require('lwip');
@@ -15,28 +14,26 @@ module.exports = function(filePath, eachCb, doneCb) {
 
     if (fs.existsSync(filePath)) {
 
-        var choppedFiles = []
-
-        var chopH = 768 * 3
-        var dims = sizeOf(filePath)
-        var numH = Math.floor(dims.height / chopH)
-        var lastH = dims.height % (chopH)
-
-        console.log(dims)
-        console.log(numH)
-        console.log(lastH)
-
-        if (numH === 0) {
-            // dont process to save memory
-            console.log(`No need to process image ${filePath}`)
-            eachCb(filePath, 0, doneCb)
-            return
-        }
-
         lwip.open(filePath, function(err, image) {
 
             if (err || !image) {
                 console.log(err)
+                eachCb(filePath, 0, doneCb)
+                return
+            }
+
+            var chopH = 768 * 3
+            var dims = {width: image.width(), height: image.height()}
+            var numH = Math.floor(dims.height / chopH)
+            var lastH = dims.height % (chopH)
+
+            console.log(dims)
+            console.log(numH)
+            console.log(lastH)
+
+            if (numH === 0) {
+                // dont process to save memory
+                console.log(`No need to process image ${filePath}`)
                 eachCb(filePath, 0, doneCb)
                 return
             }
@@ -93,8 +90,7 @@ module.exports = function(filePath, eachCb, doneCb) {
 
 
     } else {
-        eachCb([filePath])
-        doneCb()
+        eachCb(filePath, 0, doneCb)
     }
 
 }

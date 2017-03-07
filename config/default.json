@@ -2,5 +2,6 @@
   "main": "http://localhost:5000",
   "server" : "http://127.0.0.1",
   "port": 1234,
-  "token": "token"
+  "token": "token",
+  "maxClient": 2
 }
