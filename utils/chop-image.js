@@ -1,3 +1,5 @@
+'use strict'
+
 var sizeOf = require('image-size');
 var fs = require('fs');
 var path = require('path');
@@ -15,21 +17,21 @@ module.exports = function(filePath, eachCb, doneCb) {
 
         var choppedFiles = []
 
+        var chopH = 768 * 3
         var dims = sizeOf(filePath)
-        var numH = Math.floor(dims.height / dims.width)
-        var lastH = dims.height % (dims.width)
+        var numH = Math.floor(dims.height / chopH)
+        var lastH = dims.height % (chopH)
 
         console.log(dims)
         console.log(numH)
         console.log(lastH)
 
-        // do stuff with the image (if no exception)
-
-        // if (err) {
-        //     eachCb(filePath, 0)
-        //     doneCb()
-        //     return console.log(err)
-        // }
+        if (numH === 0) {
+            // dont process to save memory
+            console.log(`No need to process image ${filePath}`)
+            eachCb(filePath, 0, doneCb)
+            return
+        }
 
         lwip.open(filePath, function(err, image) {
 
@@ -41,7 +43,7 @@ module.exports = function(filePath, eachCb, doneCb) {
 
             function chop(index) {
 
-                var newFilePath = path.dirname(filePath) + '/' + path.basename(filePath, '.png') + '-chunk-' + (new Date()).getTime() + '.png'
+                var newFilePath = path.dirname(filePath) + '/' + path.basename(filePath, '.jpg') + '-chunk-' + (new Date()).getTime() + '.jpg'
                 image.clone(function(err, clonedImage) {
 
                     if (err || !clonedImage) {
@@ -51,8 +53,8 @@ module.exports = function(filePath, eachCb, doneCb) {
                     }
 
                     // var top = (dims.height / 2) - (dims.width * index)
-                    var top = dims.width * index
-                    var bottom = top + dims.width + 70
+                    var top = chopH * index
+                    var bottom = index === numH ? top + lastH : top + chopH + 70
 
                     clonedImage.crop(
                         0,
@@ -71,7 +73,8 @@ module.exports = function(filePath, eachCb, doneCb) {
                             croppedImage.writeFile(newFilePath, function() {
                                 console.log('done chopping (' + (index + 1) + '/' + (numH + 1) + ")" + newFilePath)
                                 eachCb(newFilePath, index, function() {
-                                    if (index === numH) {
+                                    // dont include footer of long pages
+                                    if (numH > 0 ? index === numH - 1 : index === numH) {
                                         doneCb()
                                         return
                                     }

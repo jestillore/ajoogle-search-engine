@@ -16,9 +16,9 @@ const TOKEN = process.env.TOKEN || config.get('token')
 let engine = require('./engines/ddg')
 
 // mock some services on local
-if (env === 'development') {
-    engine = require('./mocks/engine')
-}
+// if (env === 'development') {
+//     engine = require('./mocks/engine')
+// }
 
 let webshotOptions = {
     screenSize: {
@@ -28,7 +28,8 @@ let webshotOptions = {
     shotSize: {
         width: 1024,
         height: 'all'
-    }
+    },
+    streamType: 'jpg'
 }
 
 const app = express()
@@ -48,20 +49,25 @@ app.get('/', validateToken, function(req, res) {
 
     let sender_id = req.query.sender_id
     let q = req.query.query
-    let max = req.query.max
+    let max = req.query.max * 1
 
     engine.search({
         q,
-        max: max
+        max: 10
     }, (err, links) => {
 
         console.log(links)
         if (err) {
+            console.log(err.toString())
             return sendText(sender_id, `No search results can be foud for "${q}"`)
         }
 
-        processLinks(links, 0, sender_id, function() {
-            sendText(sender_id, `End of search results for "${q}". Please like and share Adoogle page`)
+        max = links.length > max ? max : links.length
+
+        processLinks(links, 0, sender_id, max, 0, function() {
+            setTimeout(() => {
+                sendText(sender_id, `End of search results for "${q}"`)
+            }, 2500)
         })
 
     })
@@ -70,39 +76,45 @@ app.get('/', validateToken, function(req, res) {
 
 })
 
-function processLinks(links, index, sender_id, doneCallback) {
+function processLinks(links, index, sender_id, max, successCount, doneCallback) {
     let link = links[index]
 
-    getWebsiteImage(link, sender_id, function(filename) {
+    getWebsiteImage(link, sender_id, function(err, filename) {
+
         console.log(filename)
 
-
-        processImage(filename, sender_id, function() {
-
-            if (index === links.length - 1) {
-                doneCallback()
-            } else {
-                processLinks(links, index + 1, sender_id, doneCallback)
-            }
-
-        })
-
-    })
-}
-
-function getWebsiteImage(link, sender_id, callback) {
-    var resultFile = `./public/${sender_id}-${(new Date()).getTime()}.png`
-
-    console.log(`Capturing ${link}`)
-    webshot(link, resultFile, webshotOptions, function(err) {
         if (err) {
-            console.log(err)
+            console.log(err.toString())
+            next()
             return
         }
 
-        console.log(`Image saved to ${resultFile}`)
+        successCount += 1
 
-        callback(resultFile)
+
+        processImage(filename, sender_id, next)
+
+    })
+
+    function next() {
+        console.log(`successCount: ${successCount}`)
+        if (successCount >= max || index >= links.length) {
+            doneCallback()
+        } else {
+            processLinks(links, index + 1, sender_id, max, successCount, doneCallback)
+        }
+    }
+}
+
+function getWebsiteImage(link, sender_id, callback) {
+    var resultFile = `./public/${sender_id}-${(new Date()).getTime()}.jpg`
+
+    console.log(`Capturing ${link}`)
+    webshot(link, resultFile, webshotOptions, function(err) {
+
+        if (!err) console.log(`Image saved to ${resultFile}`)
+
+        callback(err, resultFile)
     })
 }
 
@@ -123,7 +135,13 @@ function processImage(filePath, sender_id, callback) {
     }, function done() {
         setTimeout(function() {
             callback()
-        }, 4000)
+            console.log(`Deleting file ${filePath}`)
+            if (env === 'production') {
+                del([`./public/${sender_id}*`]).then(paths => {
+                    console.log('Deleted file:\n', paths.join('\n'));
+                })
+            }
+        }, 1500)
     })
 
 }
@@ -166,9 +184,9 @@ function sendText(sender_id, text, callback) {
 
 app.get('/postback', validateToken, function(req, res) {
     console.log(`Postback: ${JSON.stringify(req.query)}`)
-    del([`./public/${req.query.filename}`]).then(paths => {
-        console.log('Deleted file:\n', paths.join('\n'));
-    })
+        // del([`./public/${req.query.filename}`]).then(paths => {
+        //     console.log('Deleted file:\n', paths.join('\n'));
+        // })
     res.send()
 })
 

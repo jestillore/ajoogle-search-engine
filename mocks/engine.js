@@ -1,9 +1,9 @@
 'use strict'
 
 let links = [
-    // 'https://en.wikipedia.org/wiki/Albert_Einstein',
+    'https://en.wikipedia.org/wiki/Albert_Einstein',
     'http://adonespitogo.com',
-    'http://github.com',
+    // 'http://www.azlyrics.com/lyrics/brunomars/versaceonthefloor.html',
 ]
 
 module.exports = {
