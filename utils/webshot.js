@@ -73,7 +73,7 @@ function processUrl(url, filePrefix, doneCb) {
                     })
                     .then((dimension) => {
 
-                        page.setting('javascriptEnabled', true).then(() => {
+                        page.setting('javascriptEnabled', false).then(() => {
 
                             var dims = JSON.parse(dimension)
                             var numH = Math.floor(dims.height / shotSize.height)
