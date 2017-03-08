@@ -23,7 +23,7 @@ module.exports = function(filePath, eachCb, doneCb) {
             }
 
             var chopH = 768 * 3
-            var dims = {width: image.width(), height: image.height()}
+            var dims = { width: image.width(), height: image.height() }
             var numH = Math.floor(dims.height / chopH)
             var lastH = dims.height % (chopH)
 
@@ -39,11 +39,11 @@ module.exports = function(filePath, eachCb, doneCb) {
             }
 
             function chop(index) {
+                image.clone((err, image) => {
 
-                var newFilePath = path.dirname(filePath) + '/' + path.basename(filePath, '.jpg') + '-chunk-' + (new Date()).getTime() + '.jpg'
-                image.clone(function(err, clonedImage) {
+                    var newFilePath = path.dirname(filePath) + '/' + path.basename(filePath, '.jpg') + '-chunk-' + (new Date()).getTime() + '.jpg'
 
-                    if (err || !clonedImage) {
+                    if (err || !image) {
                         console.log(err)
                         eachCb(filePath, index, doneCb)
                         return
@@ -53,7 +53,7 @@ module.exports = function(filePath, eachCb, doneCb) {
                     var top = chopH * index
                     var bottom = index === numH ? top + lastH : top + chopH + 70
 
-                    clonedImage.crop(
+                    image.crop(
                         0,
                         top,
                         dims.width,
@@ -79,7 +79,6 @@ module.exports = function(filePath, eachCb, doneCb) {
                                 })
                             })
                         })
-
                 })
             };
 

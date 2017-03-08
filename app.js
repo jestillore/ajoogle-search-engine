@@ -92,6 +92,12 @@ function start() {
                 clientCount = clientCount - 1
                 setTimeout(() => {
                     sendText(sender_id, `End of search results for "${q}"`)
+                    console.log(`Deleting files ./public/${sender_id}*`)
+                    if (env === 'production') {
+                        del([`./public/${sender_id}*`]).then(paths => {
+                            console.log('Deleted file:\n', paths.join('\n'));
+                        })
+                    }
                 }, 2500)
             })
 
@@ -162,16 +168,9 @@ function start() {
 
         }, function done() {
 
-
             sendBatchImage(sender_id, image_urls, 0, function() {
                 setTimeout(function() {
                     callback()
-                    console.log(`Deleting files ./public/${filePath}*`)
-                    if (env === 'production') {
-                        del([`./public/${sender_id}*`]).then(paths => {
-                            console.log('Deleted file:\n', paths.join('\n'));
-                        })
-                    }
                 }, 1500)
             })
 
