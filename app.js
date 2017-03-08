@@ -19,10 +19,9 @@ function start() {
     const env = process.env.NODE_ENV || 'development'
     const express = require('express')
     const request = require('request')
-    const webshot = require('webshot')
+    const webshot = require('./utils/webshot')
     const path = require('path')
     const del = require('del')
-    const chopImage = require('./utils/chop-image')
     const MAIN = process.env.MAIN || config.get('main')
     const SERVER = process.env.SERVER || config.get('server')
     const PORT = process.env.PORT || config.get('port')
@@ -31,30 +30,11 @@ function start() {
     let engine = require('./engines/ddg')
 
     // mock some services on local
-    if (env === 'development') {
-        engine = require('./mocks/engine')
-    }
-
-    let webshotOptions = {
-        screenSize: {
-            width: 1024,
-            height: 768
-        },
-        shotSize: {
-            width: 1024,
-            height: 'all'
-        },
-        streamType: 'jpg'
-    }
+    // if (env === 'development') {
+    //     engine = require('./mocks/engine')
+    // }
 
     const app = express()
-
-    function validateToken(req, res, next) {
-        if (req.query.token !== TOKEN)
-            res.status(401).send()
-        else
-            next()
-    }
 
     app.use(express.static('public'))
 
@@ -89,15 +69,21 @@ function start() {
             max = links.length > max ? max : links.length
 
             processLinks(links, 0, sender_id, max, 0, function() {
+
                 clientCount = clientCount - 1
+
                 setTimeout(() => {
+
                     sendText(sender_id, `End of search results for "${q}"`)
+
                     console.log(`Deleting files ./public/${sender_id}*`)
+
                     if (env === 'production') {
                         del([`./public/${sender_id}*`]).then(paths => {
                             console.log('Deleted file:\n', paths.join('\n'));
                         })
                     }
+
                 }, 2500)
             })
 
@@ -110,20 +96,23 @@ function start() {
     function processLinks(links, index, sender_id, max, successCount, doneCallback) {
         let link = links[index]
 
-        getWebsiteImage(link, sender_id, function(err, filename) {
-
-            console.log(filename)
-
+        webshot(link, sender_id, function(err, results) {
             if (err) {
-                console.log(err.toString())
                 next()
-                return
+            } else {
+                successCount += 1
+
+                var image_urls = []
+
+                for (var i = 0; i < results.length; i++) {
+                    let file = results[i]
+                    let base_url = (env === 'development') ? `${SERVER}:${PORT}` : SERVER
+                    let image_url = `${base_url}/${path.basename(file)}`
+                    image_urls.push(image_url)
+                }
+
+                sendBatchImage(sender_id, image_urls, 0, next)
             }
-
-            successCount += 1
-
-            processImage(filename, sender_id, next)
-
         })
 
         function next() {
@@ -134,49 +123,6 @@ function start() {
                 processLinks(links, index + 1, sender_id, max, successCount, doneCallback)
             }
         }
-    }
-
-    function getWebsiteImage(link, sender_id, callback) {
-        var resultFile = `./public/${sender_id}-${(new Date()).getTime()}.jpg`
-
-        console.log(`Capturing ${link}`)
-        webshot(link, resultFile, webshotOptions, function(err) {
-
-            if (!err) console.log(`Image saved to ${resultFile}`)
-
-            callback(err, resultFile)
-        })
-    }
-
-    function processImage(filePath, sender_id, callback) {
-
-        let image_urls = []
-
-        chopImage(filePath, function each(choppedFile, index, next) {
-
-            let base_url = (env === 'development') ? `${SERVER}:${PORT}` : SERVER
-            let image_url = `${base_url}/${path.basename(choppedFile)}`
-                // let postback_url = `${base_url}/postback?sender_id=sender_id&filename=${path.basename(choppedFile)}&token=${TOKEN}`
-
-            image_urls.push(image_url)
-
-            next()
-
-            // sendImage(sender_id, image_url, postback_url, function() {
-            //     next()
-            // })
-
-        }, function done() {
-
-            sendBatchImage(sender_id, image_urls, 0, function() {
-                setTimeout(function() {
-                    callback()
-                }, 1500)
-            })
-
-
-        })
-
     }
 
     function sendBatchImage(sender_id, image_urls, index, callback) {
@@ -228,13 +174,12 @@ function start() {
         })
     }
 
-    // app.get('/postback', validateToken, function(req, res) {
-    //     console.log(`Postback: ${JSON.stringify(req.query)}`)
-    //         // del([`./public/${req.query.filename}`]).then(paths => {
-    //         //     console.log('Deleted file:\n', paths.join('\n'));
-    //         // })
-    //     res.send()
-    // })
+    function validateToken(req, res, next) {
+        if (req.query.token !== TOKEN)
+            res.status(401).send()
+        else
+            next()
+    }
 
     app.listen(PORT, () => {
         console.log('Node app is running on port', PORT)
