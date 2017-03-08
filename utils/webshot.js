@@ -41,12 +41,19 @@ function processUrl(url, filePrefix, doneCb) {
     preparePhantom(function(phInstance, page) {
 
         page.property('viewportSize', viewportSize).then(() => {
-            // console.log('viewportSize')
+
             console.log(`Openning URL: ${url}`)
             page.open(url).then(function() {
                 console.log(`Done loading page: ${url}`)
 
                 page.evaluate(function() {
+                        // set default background to white
+                        var style = document.createElement('style');
+                        var text = document.createTextNode('body { background: #fff }');
+                        style.setAttribute('type', 'text/css');
+                        style.appendChild(text);
+                        document.head.insertBefore(style, document.head.firstChild);
+
                         return JSON.stringify({
                             width: Math.max(
                                 document.body.offsetWidth,
@@ -66,56 +73,58 @@ function processUrl(url, filePrefix, doneCb) {
                     })
                     .then((dimension) => {
 
-                        var dims = JSON.parse(dimension)
-                        var numH = Math.floor(dims.height / shotSize.height)
+                        page.setting('javascriptEnabled', true).then(() => {
 
-                        shot(0)
+                            var dims = JSON.parse(dimension)
+                            var numH = Math.floor(dims.height / shotSize.height)
 
-                        function shot(index) {
+                            shot(0)
 
-                            var fileName = `${filePrefix}-${(new Date()).getTime()}.${format}`
-                            fileName = path.join(__dirname, '../public', fileName)
-                            var top = index * shotSize.height
-                            var bottom = index === numH ? dims.height % shotSize.height : shotSize.height + 20
+                            function shot(index) {
 
-                            page.property('clipRect', {
-                                    top: top,
-                                    left: 0,
-                                    width: shotSize.width,
-                                    height: bottom
-                                })
-                                .then(() => {
-                                    page.render(fileName)
-                                        .then(function() {
-                                            console.log(`File saved ${fileName}`)
-                                            console.log(`File exists: ${fileName}: ${require('fs').existsSync(fileName)}`)
-                                            resultFiles.push(fileName)
-                                            if (numH > 0 ? index === numH - 1 : index === numH) {
-                                                doneCb(null, resultFiles)
-                                                phInstance.exit()
-                                                return
-                                            }
-                                            shot(index + 1)
-                                        })
-                                        .catch(function() {
-                                            if (numH > 0 ? index === numH - 1 : index === numH) {
-                                                doneCb(null, resultFiles)
-                                                phInstance.exit()
-                                                return
-                                            }
-                                            shot(index + 1)
-                                        })
-                                })
-                        }
+                                var fileName = `${filePrefix}-${(new Date()).getTime()}.${format}`
+                                fileName = path.join(__dirname, '../public', fileName)
+                                var top = index * shotSize.height
+                                var bottom = index === numH ? dims.height % shotSize.height : shotSize.height + 20
+
+                                page.property('clipRect', {
+                                        top: top,
+                                        left: 0,
+                                        width: shotSize.width,
+                                        height: bottom
+                                    })
+                                    .then(() => {
+                                        page.render(fileName)
+                                            .then(function() {
+                                                console.log(`File saved ${fileName}`)
+                                                console.log(`File exists: ${fileName}: ${require('fs').existsSync(fileName)}`)
+                                                resultFiles.push(fileName)
+                                                if (numH > 0 ? index === numH - 1 : index === numH) {
+                                                    doneCb(null, resultFiles)
+                                                    phInstance.exit()
+                                                    return
+                                                }
+                                                shot(index + 1)
+                                            })
+                                            .catch(function() {
+                                                if (numH > 0 ? index === numH - 1 : index === numH) {
+                                                    doneCb(null, resultFiles)
+                                                    phInstance.exit()
+                                                    return
+                                                }
+                                                shot(index + 1)
+                                            })
+                                    })
+                            }
+
+                        })
+
+
 
                     })
 
-
-
             })
         })
-
-
 
     }, function(err, phInstance, page) {
         phInstance.exit()

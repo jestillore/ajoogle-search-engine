@@ -6,6 +6,7 @@ const throng = require('throng')
 const WORKERS = process.env.WEB_CONCURRENCY || 1;
 const config = require('config')
 const maxClient = process.env.MAX_CLIENT || config.get('maxClient')
+const blocked = require('./utils/blocked')
 var clientCount = 0
 
 throng({
@@ -30,9 +31,9 @@ function start() {
     let engine = require('./engines/ddg')
 
     // mock some services on local
-    // if (env === 'development') {
-    //     engine = require('./mocks/engine')
-    // }
+    if (env === 'development') {
+        engine = require('./mocks/engine')
+    }
 
     const app = express()
 
@@ -60,11 +61,19 @@ function start() {
         }, (err, links) => {
 
             console.log(links)
+
             if (err) {
                 console.log(err.toString())
                 clientCount = clientCount - 1
                 return sendText(sender_id, `No search results can be foud for "${q}"`)
             }
+
+            links = links.filter(function (link) {
+                return !blocked.test(link)
+            })
+
+            console.log(`filtered links:`)
+            console.log(links)
 
             max = links.length > max ? max : links.length
 
