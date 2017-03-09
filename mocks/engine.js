@@ -1,10 +1,9 @@
 'use strict'
 
 let links = [
-    'https://www.youtube.com/xxxxx',
-    'https://en.wikipedia.org/wiki/Albert_Einstein',
-    'http://adonespitogo.com',
-    // 'http://www.azlyrics.com/lyrics/brunomars/versaceonthefloor.html',
+    'http://localhost:5000',
+    'http://localhost:5000',
+    'http://localhost:5000',
 ]
 
 module.exports = {
