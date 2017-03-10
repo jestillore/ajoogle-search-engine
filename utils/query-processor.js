@@ -37,8 +37,14 @@ class QueryProcessor {
             }
 
             this.links = result.filter(function(link) {
-                return !blocked.test(link)
+                return !blocked.test(link) && (link ? (link.indexOf('http') > -1) : false)
             })
+
+            if (this.links.length === 0) {
+                this.finished()
+                return
+            }
+
             this.max = this.links.length > this.max ? this.max : this.links.length
 
             this.generateImageUrls()
@@ -86,9 +92,9 @@ class QueryProcessor {
             'wallpaper',
         ]
 
-        let imgReg = new RegExp(`.*${image_keywords.join('*.|.*')}.*`)
+        let imgReg = new RegExp(`(\\s)?(${image_keywords.join('|')})(\\s|s)?`)
 
-        return imgReg.test(this.query)
+        return imgReg.test(this.query.toLowerCase())
     }
 
     sendText(text) {
@@ -144,15 +150,18 @@ class QueryProcessor {
 
     }
 
-    finished (){
-      setTimeout(() => {
-        this.sendText(`End of search results for "${this.query}"`)
-      }, 2500)
-      this.doneCallback()
+    finished() {
+        setTimeout(() => {
+            if (this.successCount > 0)
+                this.sendText(`End of search results for "${this.query}".`)
+            else
+                this.sendText(`No results found for "${this.query}".`)
+        }, 2500)
+        this.doneCallback()
     }
 
     done(fn) {
-      this.doneCallback = fn
+        this.doneCallback = fn
     }
 
 }

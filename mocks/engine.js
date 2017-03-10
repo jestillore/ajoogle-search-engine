@@ -8,6 +8,8 @@ let links = [
 
 module.exports = {
     search: (query, cb) => {
+      setTimeout(() => {
         cb(null, links)
+      }, 1000)
     }
 }

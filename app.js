@@ -25,7 +25,7 @@ function start() {
     const PORT = process.env.PORT || config.get('port')
     const TOKEN = process.env.TOKEN || config.get('token')
 
-    let engine = require('./engines/ddg')
+    let engine = require('./engines/scrapers')
 
     // mock some services on local
     if (env === 'development') {
