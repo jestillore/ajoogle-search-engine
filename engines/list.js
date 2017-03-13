@@ -1,7 +1,7 @@
 module.exports = [
-  'http://ajoogle0001.esy.es',
-  'https://buckish-fall.000webhostapp.com',
-  'https://pitogoadones.000webhostapp.com',
+  'http://beaglebears.16mb.com',
+  'https://brush-fire-tasks.000webhostapp.com',
+  'https://chummiest-sight.000webhostapp.com',
   'https://cathrineflings.000webhostapp.com',
   'https://ambitionless-elapse.000webhostapp.com',
   'https://danielmbo.000webhostapp.com',

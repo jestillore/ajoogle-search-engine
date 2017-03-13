@@ -5,8 +5,9 @@ const config = require('config')
 const MAIN_SERVER = process.env.MAIN || config.get('main')
 const PORT = process.env.PORT || config.get('port')
 const blocked = require('./blocked')
-const webshot = require('./webshot')
+const WebShot = require('./webshot')
 const request = require('request')
+const del = require('del')
 
 class QueryProcessor {
 
@@ -19,9 +20,14 @@ class QueryProcessor {
         this.successCount = 0
         this.linkProcessIndex = 0
         this.imageSendIndex = 0
+        this.stopped = false
         this.processQuery()
 
         return this
+    }
+
+    getQueryId() {
+        return this.query_id
     }
 
     processQuery() {
@@ -47,21 +53,30 @@ class QueryProcessor {
 
             this.max = this.links.length > this.max ? this.max : this.links.length
 
-            this.generateImageUrls()
+            if (this.canContinue())
+              this.generateImageUrls()
+            else
+              this.finished()
         })
     }
 
     generateImageUrls() {
+
         let link = this.links[this.linkProcessIndex]
-        console.log(`includeImages: ${this.includeImages()}`)
-        webshot(link, this.sender_id, this.includeImages(), (err, image_urls) => {
-            if (err) {
-                next()
-            } else {
-                this.successCount += 1
-                this.eachLinkResult(image_urls)
-            }
-        })
+        this.webshot = new WebShot(link)
+        this.webshot
+            .filePrefix(this.sender_id)
+            .includeImages(this.includeImages())
+            .capture((err, image_urls) => {
+                if (err) {
+                    console.log('Webshot error: ', err)
+                    this.nextLink()
+                } else {
+                    this.successCount += 1
+                    this.eachLinkResult(image_urls)
+                }
+            })
+
     }
 
     eachLinkResult(image_urls) {
@@ -69,17 +84,23 @@ class QueryProcessor {
         if (image_urls.length > 0) {
             this.imageSendIndex = 0
             this.sendBatchImage(image_urls)
-        } else
-            this.nextLink()
+        } else {
+          this.nextLink()
+        }
     }
 
     nextLink() {
-        if (this.successCount >= this.max || this.linkProcessIndex === this.links.length - 1) {
-            this.finished()
-        } else {
-            this.linkProcessIndex += 1
-            this.generateImageUrls()
-        }
+      if (this.canContinue()) {
+        this.linkProcessIndex += 1
+        this.generateImageUrls()
+      } else {
+        if (!this.stopped)
+          this.finished()
+      }
+    }
+
+    canContinue() {
+        return (this.successCount < this.max) && (this.linkProcessIndex <= this.links.length - 2) && !this.stopped
     }
 
     includeImages() {
@@ -87,9 +108,12 @@ class QueryProcessor {
             'photo',
             'image',
             'picture',
-            'pics',
+            'pic',
             'background',
             'wallpaper',
+            'graphic',
+            'logo',
+            'icon',
         ]
 
         let imgReg = new RegExp(`(\\s)?(${image_keywords.join('|')})(\\s|s)?`)
@@ -98,6 +122,7 @@ class QueryProcessor {
     }
 
     sendText(text) {
+        if (this.stopped) return
         request({
             baseUrl: MAIN_SERVER,
             uri: '/send-text',
@@ -115,6 +140,7 @@ class QueryProcessor {
     }
 
     sendImage(image_url, callback) {
+        if (this.stopped) return
         request({
             baseUrl: MAIN_SERVER,
             uri: '/send-image',
@@ -160,12 +186,17 @@ class QueryProcessor {
         this.doneCallback()
     }
 
+    stop() {
+        this.stopped = true
+        if (this.webshot) this.webshot.stop()
+        if (this.doneCallback) this.doneCallback()
+        console.log('Stopped query: ' + this.query)
+    }
+
     done(fn) {
         this.doneCallback = fn
     }
 
 }
 
-
 module.exports = QueryProcessor
-    // let qp = new QueryProcessor(require('ddg-scraper'), 1234, 'query...', 2)
