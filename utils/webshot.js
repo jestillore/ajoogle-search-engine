@@ -6,6 +6,7 @@ const SERVER_URL = (ENV === 'development') ? `${SERVER}:${PORT}` : SERVER
 const phantom = require('phantom')
 const path = require('path')
 const fs = require('fs')
+const adblock = require('./adblock')
 const shotSize = {
     width: 1024,
     height: 1024 * (3 / 2) // aspec ratio 3:2
@@ -60,6 +61,15 @@ class WebShot {
             .then(page => {
                 console.log(`Page ready.`)
                 this.page = page
+                this.outObj = this.phInstance.createOutObject()
+                this.outObj.adblock = adblock
+                page.on('onResourceRequested', true, function(requestData, networkRequest, out) {
+                    // dont load ads and images
+                    if (out.adblock(requestData.url) || (new RegExp(/(.*\.(?:png|jpg|gif|jpeg))/i)).test(requestData.url)) {
+                        // console.log('Aborting resource: ' + requestData.url)
+                        networkRequest.abort()
+                    }
+                }, this.outObj)
                 this.setupPage()
             })
             .catch(err => {
@@ -185,16 +195,16 @@ class WebShot {
     }
 
     exit() {
-        // if (this.phInstance) this.phInstance.exit()
+
         this.page.close().then(() => {
             if (this.phInstance) {
-              this.phInstance.exit()
-              this.phInstance = null
+                this.phInstance.exit()
+                this.phInstance = null
             }
         }).catch(() => {
             if (this.phInstance) {
-              this.phInstance.exit()
-              this.phInstance = null
+                this.phInstance.exit()
+                this.phInstance = null
             }
         })
 

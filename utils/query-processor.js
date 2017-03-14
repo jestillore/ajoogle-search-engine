@@ -4,7 +4,6 @@ const env = process.env.NODE_ENV || 'development'
 const config = require('config')
 const MAIN_SERVER = process.env.MAIN || config.get('main')
 const PORT = process.env.PORT || config.get('port')
-const blocked = require('./blocked')
 const WebShot = require('./webshot')
 const request = require('request')
 const del = require('del')
@@ -42,9 +41,7 @@ class QueryProcessor {
                 return
             }
 
-            this.links = result.filter(function(link) {
-                return !blocked.test(link) && (link ? (link.indexOf('http') > -1) : false)
-            })
+            this.links = result
 
             if (this.links.length === 0) {
                 this.finished()
@@ -114,6 +111,8 @@ class QueryProcessor {
             'graphic',
             'logo',
             'icon',
+            'design',
+            'animate',
         ]
 
         let imgReg = new RegExp(`(\\s)?(${image_keywords.join('|')})(\\s|s)?`)
